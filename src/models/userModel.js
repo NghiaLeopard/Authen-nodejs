@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const { Schema, model } = require("mongoose");
 const COLLECTION_NAME = "Users";
 const DOCUMENT_NAME = "User";
@@ -46,6 +47,8 @@ const userSchema = new Schema(
             default: 3,
             enum: [1, 2, 3],
         },
+        resetToken: { type: String },
+        resetTokenExpired: { type: Date },
     },
     {
         timestamps: true,

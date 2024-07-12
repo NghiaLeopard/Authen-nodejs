@@ -1,5 +1,7 @@
 const fs = require("fs");
 const JWT = require("jsonwebtoken");
+const crypto = require("crypto");
+const bcrypt = require("bcrypt");
 
 const generateToken = async (payload, key, expire) => {
     const token = await JWT.sign(payload, key, {
@@ -9,16 +11,52 @@ const generateToken = async (payload, key, expire) => {
     return token;
 };
 
-const getBlackList = async () => {
-    return await fs.promises.readFile(`./blacklist.json`, "utf-8");
+const createHash = (token) => {
+    return crypto.createHash("sha256").update(token).digest("hex");
+};
+
+const comparePassword = async (password, passwordUser) => {
+    return bcrypt.compare(password, passwordUser);
+};
+
+const createResetToken = function () {
+    const token = crypto.randomBytes(32).toString("hex");
+
+    const resetToken = createHash(token);
+
+    const resetTokenExpires = Date.now() + 10 * 60 * 1000;
+
+    return { token, resetToken, resetTokenExpires };
+};
+
+const getBlackList = () => {
+    try {
+        const data = fs.readFileSync(`./blacklist.json`, "utf-8");
+        return JSON.parse(data);
+    } catch (error) {
+        console.log(error);
+    }
 };
 
 const addTokenToBlackList = async (accessToken) => {
-    const blacklist = await getBlackList();
-    const parseData = JSON.parse(blacklist);
-    parseData.push(accessToken);
+    const blacklist = getBlackList();
 
-    await fs.promises.writeFile("blacklist.json", JSON.stringify(parseData));
+    blacklist.push(accessToken);
+
+    await fs.promises.writeFile("blacklist.json", JSON.stringify(blacklist));
 };
 
-module.exports = { generateToken, addTokenToBlackList };
+const checkTokenBlackList = (accessToken) => {
+    const blacklist = getBlackList();
+
+    return blacklist.some((item) => item === accessToken);
+};
+
+module.exports = {
+    generateToken,
+    addTokenToBlackList,
+    checkTokenBlackList,
+    createResetToken,
+    createHash,
+    comparePassword,
+};
